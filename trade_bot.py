@@ -170,7 +170,7 @@ if __name__ == "__main__":
 
 
 ## Your `.env` file should have:
-```
+
 BOT_TOKEN=your_bot_token_here
 ```
 
