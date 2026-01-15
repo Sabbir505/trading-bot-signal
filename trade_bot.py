@@ -5,6 +5,7 @@ from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filte
 from dotenv import load_dotenv
 from flask import Flask, request
 import threading
+import requests
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -27,21 +28,29 @@ def home():
     return "TradingView Webhook Bot is running!", 200
 
 @flask_app.route('/webhook', methods=['POST'])
-async def webhook():
+def webhook():
     """Receive alerts from TradingView"""
-    data = request.get_json()
+    try:
+        data = request.get_json()
+        
+        if data:
+            message = data.get('message', 'Alert triggered!')
+            
+            # Send to Telegram using requests (synchronous)
+            url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+            payload = {
+                "chat_id": GROUP_CHAT_ID,
+                "text": f"📊 **TradingView Alert**\n\n{message}",
+                "parse_mode": "Markdown"
+            }
+            response = requests.post(url, json=payload)
+            print(f"Telegram response: {response.status_code} - {response.text}")
+            
+            return "OK", 200
+    except Exception as e:
+        print(f"Error in webhook: {e}")
+        return "Error", 500
     
-    if data and telegram_app:
-        message = data.get('message', '')
-        
-        # Send the raw message to your Telegram group
-        await telegram_app.bot.send_message(
-            chat_id=GROUP_CHAT_ID,
-            text=f"📊 **TradingView Alert**\n\n{message}",
-            parse_mode="Markdown"
-        )
-        
-        return "OK", 200
     return "No data", 400
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -62,7 +71,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         closed_any = False
         for symbol, info in last_trade_messages.items():
-            if not info.get("is_long_term", False):
+            if not info.get("is_long_term", False):  # skip long-term
                 msg_id = info["msg_id"]
                 await context.bot.send_message(
                     chat_id=GROUP_CHAT_ID,
@@ -121,8 +130,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("⚠️ Format: buy <symbol> <price>")
             return
 
+        # Current time in China
         now = datetime.now(CHINA_TZ)
-        formatted_time = now.strftime("%Y-%m-%d %I:%M %p")
+        formatted_time = now.strftime("%Y-%m-%d %I:%M %p")  # 12-hour format with AM/PM
 
         emoji = "🟢" if action == "BUY" else "🔴"
 
@@ -143,6 +153,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown"
         )
 
+        # Save trade info
         last_trade_messages[symbol] = {"msg_id": sent.message_id, "is_long_term": is_long_term}
         return
 
@@ -166,6 +177,12 @@ def main():
 
 if __name__ == "__main__":
     main()
+```
 
-
-
+## Also update your `requirements.txt`:
+```
+python-telegram-bot==20.3
+python-dotenv==1.2.1
+flask==3.0.0
+gunicorn==21.2.0
+requests==2.31.0
