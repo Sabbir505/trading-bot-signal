@@ -177,12 +177,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-```
 
-## Also update your `requirements.txt`:
-```
-python-telegram-bot==20.3
-python-dotenv==1.2.1
-flask==3.0.0
-gunicorn==21.2.0
-requests==2.31.0
+
+
