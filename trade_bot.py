@@ -170,10 +170,6 @@ if __name__ == "__main__":
 
 ## Key Changes Made:
 
-1. ✅ Added Flask webhook endpoint at `/webhook`
-2. ✅ Keeps all your existing bot functionality (buy/sell/close commands)
-3. ✅ Runs both Telegram bot and Flask server simultaneously
-4. ✅ Receives TradingView alerts and forwards to your group
 
 ## Update `requirements.txt`:
 ```
