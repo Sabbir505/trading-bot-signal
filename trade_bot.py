@@ -166,13 +166,7 @@ def main():
 
 if __name__ == "__main__":
     main()
-```
 
-## Key Changes Made:
-
-
-## Update `requirements.txt`:
-```
 python-telegram-bot==20.7
 python-dotenv==1.0.0
 flask==3.0.0
