@@ -188,7 +188,7 @@ BOT_TOKEN=your_bot_token_here
 
 In your TradingView alert message, use this format:
 ```
-🟢 BUY SIGNAL
+
 {{ticker}} on {{interval}}
 Price: {{close}}
 Time: {{time}}
