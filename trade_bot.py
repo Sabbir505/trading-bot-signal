@@ -168,7 +168,7 @@ if __name__ == "__main__":
     main()
 
 python-telegram-bot==20.7
-python-dotenv==1.0.0
+
 flask==3.0.0
 gunicorn==21.2.0
 ```
