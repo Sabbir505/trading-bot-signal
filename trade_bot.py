@@ -3,17 +3,46 @@ from datetime import datetime, timedelta, timezone
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
 from dotenv import load_dotenv
+from flask import Flask, request
+import threading
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 GROUP_CHAT_ID = -5087254229  # <-- replace with your real group ID
 
 # Store last trades with details
-# Example: { "SOL": {"msg_id": 12345, "is_long_term": False}, ... }
 last_trade_messages = {}
 
 # China timezone (UTC+8)
 CHINA_TZ = timezone(timedelta(hours=8))
+
+# Flask app for webhook
+flask_app = Flask(__name__)
+
+# Store the telegram bot instance globally
+telegram_app = None
+
+@flask_app.route('/')
+def home():
+    return "TradingView Webhook Bot is running!", 200
+
+@flask_app.route('/webhook', methods=['POST'])
+async def webhook():
+    """Receive alerts from TradingView"""
+    data = request.get_json()
+    
+    if data and telegram_app:
+        message = data.get('message', '')
+        
+        # Send the raw message to your Telegram group
+        await telegram_app.bot.send_message(
+            chat_id=GROUP_CHAT_ID,
+            text=f"📊 **TradingView Alert**\n\n{message}",
+            parse_mode="Markdown"
+        )
+        
+        return "OK", 200
+    return "No data", 400
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.lower().strip()
@@ -33,7 +62,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         closed_any = False
         for symbol, info in last_trade_messages.items():
-            if not info.get("is_long_term", False):  # skip long-term
+            if not info.get("is_long_term", False):
                 msg_id = info["msg_id"]
                 await context.bot.send_message(
                     chat_id=GROUP_CHAT_ID,
@@ -92,9 +121,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("⚠️ Format: buy <symbol> <price>")
             return
 
-        # Current time in China
         now = datetime.now(CHINA_TZ)
-        formatted_time = now.strftime("%Y-%m-%d %I:%M %p")  # 12-hour format with AM/PM
+        formatted_time = now.strftime("%Y-%m-%d %I:%M %p")
 
         emoji = "🟢" if action == "BUY" else "🔴"
 
@@ -115,16 +143,56 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown"
         )
 
-        # Save trade info
         last_trade_messages[symbol] = {"msg_id": sent.message_id, "is_long_term": is_long_term}
         return
 
+def run_flask():
+    """Run Flask in a separate thread"""
+    port = int(os.environ.get('PORT', 10000))
+    flask_app.run(host='0.0.0.0', port=port)
 
 def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    print("Bot starting...")
-    app.run_polling()
+    global telegram_app
+    
+    telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
+    telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    
+    # Start Flask in a separate thread
+    flask_thread = threading.Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+    
+    print("Bot starting... Webhook ready on /webhook")
+    telegram_app.run_polling()
 
 if __name__ == "__main__":
     main()
+```
+
+## Key Changes Made:
+
+1. ✅ Added Flask webhook endpoint at `/webhook`
+2. ✅ Keeps all your existing bot functionality (buy/sell/close commands)
+3. ✅ Runs both Telegram bot and Flask server simultaneously
+4. ✅ Receives TradingView alerts and forwards to your group
+
+## Update `requirements.txt`:
+```
+python-telegram-bot==20.7
+python-dotenv==1.0.0
+flask==3.0.0
+gunicorn==21.2.0
+```
+
+## Your `.env` file should have:
+```
+BOT_TOKEN=your_bot_token_here
+```
+
+## To Customize TradingView Alert Format:
+
+In your TradingView alert message, use this format:
+```
+🟢 BUY SIGNAL
+{{ticker}} on {{interval}}
+Price: {{close}}
+Time: {{time}}
