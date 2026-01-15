@@ -172,12 +172,12 @@ if __name__ == "__main__":
 ## Your `.env` file should have:
 
 BOT_TOKEN=your_bot_token_here
-```
+
 
 ## To Customize TradingView Alert Format:
 
 In your TradingView alert message, use this format:
-```
+
 
 {{ticker}} on {{interval}}
 Price: {{close}}
