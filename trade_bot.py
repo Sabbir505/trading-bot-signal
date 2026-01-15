@@ -167,11 +167,7 @@ def main():
 if __name__ == "__main__":
     main()
 
-python-telegram-bot==20.7
 
-flask==3.0.0
-gunicorn==21.2.0
-```
 
 ## Your `.env` file should have:
 ```
