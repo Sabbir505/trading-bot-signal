@@ -30,11 +30,18 @@ def home():
 @flask_app.route('/webhook', methods=['POST'])
 def webhook():
     """Receive alerts from TradingView"""
+    print("=" * 50)
+    print("Webhook received!")
+    
     try:
         data = request.get_json()
+        print(f"Received data: {data}")
         
         if data:
             message = data.get('message', 'Alert triggered!')
+            print(f"Message to send: {message}")
+            print(f"BOT_TOKEN exists: {BOT_TOKEN is not None}")
+            print(f"GROUP_CHAT_ID: {GROUP_CHAT_ID}")
             
             # Send to Telegram using requests (synchronous)
             url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
@@ -43,14 +50,26 @@ def webhook():
                 "text": f"📊 **TradingView Alert**\n\n{message}",
                 "parse_mode": "Markdown"
             }
-            response = requests.post(url, json=payload)
-            print(f"Telegram response: {response.status_code} - {response.text}")
             
-            return "OK", 200
+            print(f"Sending to Telegram API...")
+            response = requests.post(url, json=payload, timeout=10)
+            print(f"Telegram API response: {response.status_code}")
+            print(f"Response body: {response.text}")
+            
+            if response.status_code == 200:
+                print("✅ Message sent successfully!")
+                return "OK", 200
+            else:
+                print(f"❌ Telegram API error: {response.text}")
+                return f"Telegram error: {response.status_code}", 500
+                
     except Exception as e:
-        print(f"Error in webhook: {e}")
-        return "Error", 500
+        print(f"❌ ERROR in webhook: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return f"Error: {str(e)}", 500
     
+    print("⚠️ No data received")
     return "No data", 400
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -165,6 +184,10 @@ def run_flask():
 def main():
     global telegram_app
     
+    print(f"Starting bot...")
+    print(f"BOT_TOKEN exists: {BOT_TOKEN is not None}")
+    print(f"GROUP_CHAT_ID: {GROUP_CHAT_ID}")
+    
     telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
     telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
@@ -177,6 +200,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
